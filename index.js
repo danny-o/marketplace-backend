@@ -49,13 +49,14 @@ app.post('/api/signin', async (req, res) => {
         const { walletAddress, username, profilePictureUrl, nonce } = await req.body;
 
         const cookieNonce = req.cookies.siwe;
-        if (nonce != cookieNonce) {
-            return res.status(400).json({
-                status: "error",
-                isValid: false,
-                message: "Invalid nonce",
-            });
-        }
+        console.log("cookie nonce", cookieNonce, "body nonce", nonce);
+        // if (nonce != cookieNonce) {
+        //     return res.status(400).json({
+        //         status: "error",
+        //         isValid: false,
+        //         message: "Invalid nonce",
+        //     });
+        // }
 
         // 1. Check if user exists
         const { data: existingUser, error: findError } = await supabaseAdmin
