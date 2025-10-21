@@ -22,7 +22,11 @@ app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, origin);
-        } else {
+        } 
+        else if(origin && origin.endsWith('.lovable.app')) {
+            callback(null, origin);
+        }
+        else {
             callback(new Error("CORS not allowed for this origin"));
         }
     },
