@@ -23,7 +23,7 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, origin);
         } 
-        else if(origin && origin.endsWith('.lovable.app')) {
+        else if(origin && (origin.endsWith('.lovable.app') || origin.endsWith('.lovableproject.com'))) {
             callback(null, origin);
         }
         else {
