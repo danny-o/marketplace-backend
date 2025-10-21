@@ -95,13 +95,9 @@ app.post('/api/signin', async (req, res) => {
                         wallet_address: walletAddress,
                         username,
                         profile_picture_url: profilePictureUrl,
-                        nullifier_hash: "random",
-                        verification_level: 'orb',
                         is_verified: false,
                         is_seller: false,
-                        rating: null,
-                        //   created_time: new Date().toISOString(),
-                        //   updated_time: new Date().toISOString(),
+                        rating: null
                     }]);
 
                 if (insertError) {
