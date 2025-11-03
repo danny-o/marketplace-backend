@@ -55,6 +55,7 @@ app.post('/api/signin', async (req, res) => {
 
         const cookieNonce = req.cookies.siwe;
         console.log("cookie nonce", cookieNonce, "body nonce", nonce);
+        console.log("signin called with", walletAddress, username);
         // if (nonce != cookieNonce) {
         //     return res.status(400).json({
         //         status: "error",
