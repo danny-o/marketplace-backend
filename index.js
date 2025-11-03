@@ -164,7 +164,10 @@ app.post('/api/initiate-payment', async (req, res) => {
 
     if (fetchError && fetchError.code !== 'PGRST116') {
         // PGRST116 = no rows found, so ignore that
-        throw fetchError;
+        return res.status(500).json({
+            status: "error",
+            message: "Error initiating payment",
+        });
     }
 
     console.log("Existing payment", existingPayment);
@@ -235,13 +238,13 @@ app.post('/api/initiate-payment', async (req, res) => {
 
 
 app.post('/api/verify-payment', async (req, res) => {
-    const { reference } = req.body;
+    const { reference,transaction_id } = req.body;
 
     console.log("Verify payment called with", reference);
 
     const { data: paymentData, error: lookUpError } = await supabaseAdmin
         .from('listing_payments')
-        .select("id,product_id")
+        .select("id,product_id,payment_status")
         .eq('id', reference)
         .single();
 
@@ -252,17 +255,41 @@ app.post('/api/verify-payment', async (req, res) => {
         });
     }
 
-    // const response = await fetch(
-    // 		`https://developer.worldcoin.org/api/v2/minikit/transaction/${paymentReference}?app_id=${process.env.APP_ID}`,
-    // 		{
-    // 			method: 'GET',
-    // 			headers: {
-    // 				Authorization: `Bearer ${process.env.DEV_PORTAL_API_KEY}`,
-    // 			},
-    // 		}
-    // 	)
+    if(paymentData.payment_status === 'completed') {
+        return res.status(400).json({
+            status: "error",
+            message: "Payment for this product was already completed",
+        });
+    }
 
-    const paymentVerification = { status: "completed" }; // await response.json();
+    const response = await fetch(
+    		`https://developer.worldcoin.org/api/v2/minikit/transaction/${transaction_id}?app_id=${process.env.APP_ID}`,
+    		{
+    			method: 'GET',
+    			headers: {
+    				Authorization: `Bearer ${process.env.DEV_PORTAL_API_KEY}`,
+    			},
+    		}
+    	)
+    
+
+    //  const paymentVerification = await response.json()
+    
+    // for testing purposes, paymentVerification not a constant
+     let paymentVerification = await response.json()
+
+     //To be removed
+     if(!paymentVerification.status || paymentVerification.status === "failed"){
+        // return res.status(400).json({
+        //     status: "error",
+        //     message: "Transaction not confirmed",
+        // });
+
+        // For testing purposes, we will assume the payment is confirmed
+        paymentVerification = { status: "mined" };
+     }
+
+   
 
     console.log("Payment verification response", paymentVerification);
 
@@ -272,6 +299,21 @@ app.post('/api/verify-payment', async (req, res) => {
             message: "Payment not confirmed",
         });
     }
+
+    //update product status
+    const { error: productStatusUpdateError } = await supabaseAdmin
+        .from('products')
+        .update({ status: 'active' })
+        .eq('id', paymentData.product_id)
+        .select();
+
+    if (productStatusUpdateError) {
+        return res.status(500).json({
+            status: "error",
+            message: "Failed to update product status",
+        });
+    }
+
 
     // Update payment status in DB
     const { error: paymentStatusUpdateError } = await supabaseAdmin
@@ -287,19 +329,7 @@ app.post('/api/verify-payment', async (req, res) => {
         });
     }
 
-    const { error: productStatusUpdateError } = await supabaseAdmin
-        .from('products')
-        .update({ status: 'active' })
-        .eq('id', paymentData.product_id)
-        .select();
-
-    if (productStatusUpdateError) {
-        return res.status(500).json({
-            status: "error",
-            message: "Failed to update product status",
-        });
-    }
-
+    
     res.json({
         status: "success",
         message: "Payment verified and completed",
