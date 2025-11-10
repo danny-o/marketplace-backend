@@ -179,7 +179,8 @@ app.post('/api/initiate-payment', async (req, res) => {
             return res.json({
                 status: "success",
                 paymentId: existingPayment.id,
-                amount: existingPayment.amount
+                amount: existingPayment.amount,
+                currency: existingPayment.currency
             });
         }
 
