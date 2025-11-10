@@ -153,7 +153,7 @@ app.post('/api/signin', async (req, res) => {
 
 app.post('/api/initiate-payment', async (req, res) => {
 
-    const { productId, sellerId, paymentType } = req.body;
+    const { productId, sellerId, paymentType,currency } = req.body;
 
     console.log("Initiate payment called with", productId, sellerId, paymentType);
 
@@ -193,25 +193,42 @@ app.post('/api/initiate-payment', async (req, res) => {
 
 
     const { data: payment, error: findError } = await supabaseAdmin
-        .from('payment_fees')
-        .select('*')
-        .eq('payment_type', paymentType)
+        .from('platform_config')
+        .select('config_value')
+        .eq('config_key', paymentType)
         .single();
+    
 
-    if (findError || !payment.amount) {
-        return res.status(400).json({
+    if(findError || !payment.config_value.currencies){
+        return res.status(500).json({
             status: "error",
-            message: "Invalid payment type",
+            message: "Error initiating payment",
         });
     }
+
+    if(!(currency in payment.config_value.currencies)){
+        return res.status(400).json({
+            status: "error",
+            message: "Unsupported currency",
+        });
+    }
+
+    if(!payment.config_value.currencies[currency].available){
+        return res.status(400).json({
+            status: "error",
+            message: "Currency not available",
+        });
+    }
+
+    console.log("Payment config", JSON.stringify(payment));
 
     const { data: paymentData, error: insertError } = await supabaseAdmin
         .from('listing_payments')
         .insert([{
             product_id: productId,
             seller_id: sellerId,
-            amount: payment.amount,
-            currency: null,
+            amount: payment.config_value.currencies[currency].amount,
+            currency: currency,
             payment_status: 'pending',
 
         }])
@@ -230,7 +247,8 @@ app.post('/api/initiate-payment', async (req, res) => {
     res.json({
         status: "success",
         paymentId: paymentData[0].id,
-        amount: payment.amount
+        amount: paymentData[0].amount,
+        currency: paymentData[0].currency
     });
 
 
