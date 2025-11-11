@@ -258,7 +258,7 @@ app.post('/api/v1/initiate-payment', async (req, res) => {
         paymentId: paymentData[0].id,
         amount: paymentData[0].amount,
         currency: paymentData[0].currency,
-        wallet: payment.config_value.currencies[currency].wallet,
+        wallet: payment.config_value.wallet,
     });
 
 
