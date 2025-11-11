@@ -35,7 +35,7 @@ app.use(cors({
 }));
 
 // ✅ Sample route — generate nonce and set cookie
-app.get('/api/nonce', (req, res) => {
+app.get('/api/v1/nonce', (req, res) => {
     const nonce = crypto.randomUUID().replace(/-/g, "");
     console.log(`Generated nonce: ${nonce} for origin: ${req.get('origin')}`);
 
@@ -49,7 +49,7 @@ app.get('/api/nonce', (req, res) => {
     res.json({ nonce });
 });
 
-app.post('/api/signin', async (req, res) => {
+app.post('/api/v1/signin', async (req, res) => {
     try {
         const { walletAddress, username, profilePictureUrl, nonce } = await req.body;
 
@@ -151,7 +151,7 @@ app.post('/api/signin', async (req, res) => {
     }
 });
 
-app.post('/api/initiate-payment', async (req, res) => {
+app.post('/api/v1/initiate-payment', async (req, res) => {
 
     const { productId, sellerId, paymentType,currency } = req.body;
 
@@ -163,6 +163,8 @@ app.post('/api/initiate-payment', async (req, res) => {
         .eq('product_id', productId)
         .single();
 
+      console.log("Error fetching existing payment record", fetchError);   
+
     if (fetchError && fetchError.code !== 'PGRST116') {
         // PGRST116 = no rows found, so ignore that
         return res.status(500).json({
@@ -171,20 +173,25 @@ app.post('/api/initiate-payment', async (req, res) => {
         });
     }
 
-    console.log("Existing payment", existingPayment);
-
     if (existingPayment) {
         if (['pending', 'failed'].includes(existingPayment.payment_status)) {
-            // Payment already started — return it
-            return res.json({
-                status: "success",
-                paymentId: existingPayment.id,
-                amount: existingPayment.amount,
-                currency: existingPayment.currency
-            });
+           // delete existing payment record
+           const { error: deleteError } = await supabaseAdmin
+                .from('listing_payments')
+                .delete()
+                .eq('id', existingPayment.id);
+
+            console.log("Deleted existing payment record", deleteError);    
+
+            if (deleteError) {
+                return res.status(500).json({
+                    status: "error",
+                    message: "Error initiating payment",
+                });
+            }
         }
 
-        if (existingPayment.payment_status === 'completed') {
+        else if (existingPayment.payment_status === 'completed') {
             // Stop duplicate payment
             return res.status(400).json({
                 error: 'Payment already completed for this product.',
@@ -206,6 +213,8 @@ app.post('/api/initiate-payment', async (req, res) => {
             message: "Error initiating payment",
         });
     }
+
+     console.log("Deleted existing payment record", findError);
 
     if(!(currency in payment.config_value.currencies)){
         return res.status(400).json({
@@ -231,7 +240,6 @@ app.post('/api/initiate-payment', async (req, res) => {
             amount: payment.config_value.currencies[currency].amount,
             currency: currency,
             payment_status: 'pending',
-
         }])
         .select();
 
@@ -249,7 +257,8 @@ app.post('/api/initiate-payment', async (req, res) => {
         status: "success",
         paymentId: paymentData[0].id,
         amount: paymentData[0].amount,
-        currency: paymentData[0].currency
+        currency: paymentData[0].currency,
+        wallet: payment.config_value.currencies[currency].wallet,
     });
 
 
@@ -257,7 +266,7 @@ app.post('/api/initiate-payment', async (req, res) => {
 });
 
 
-app.post('/api/verify-payment', async (req, res) => {
+app.post('/api/v1/verify-payment', async (req, res) => {
     const { reference,transaction_id } = req.body;
 
     console.log("Verify payment called with", reference);
