@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { supabaseAdmin } from './supabase/supabaseAdminClient.js';
 import dotenv from 'dotenv';
 import { stat } from 'fs';
+import { ref } from 'process';
 dotenv.config();
 
 const app = express();
@@ -269,7 +270,7 @@ app.post('/api/v1/initiate-payment', async (req, res) => {
 app.post('/api/v1/verify-payment', async (req, res) => {
     const { reference,transaction_id } = req.body;
 
-    console.log("Verify payment called with", reference);
+    console.log(`Verify payment called with ref ${reference} transactionId ${transaction_id}`);
 
     const { data: paymentData, error: lookUpError } = await supabaseAdmin
         .from('listing_payments')
