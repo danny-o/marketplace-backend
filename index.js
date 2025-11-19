@@ -292,7 +292,7 @@ app.post('/api/v1/verify-payment', async (req, res) => {
     }
 
     const response = await fetch(
-    		`https://developer.worldcoin.org/api/v2/minikit/transaction/${transaction_id}?app_id=${process.env.APP_ID}`,
+    		`https://developer.worldcoin.org/api/v2/minikit/transaction/${transaction_id}?app_id=${process.env.APP_ID}&type=payment`,
     		{
     			method: 'GET',
     			headers: {
@@ -302,30 +302,30 @@ app.post('/api/v1/verify-payment', async (req, res) => {
     	)
     
 
-    //  const paymentVerification = await response.json()
+     const paymentVerification = await response.json()
     
     // for testing purposes, paymentVerification not a constant
-     let paymentVerification = await response.json()
+    //  let paymentVerification = await response.json()
 
-     //To be removed
+
+     console.log("Payment verification response", paymentVerification);
+
+     
      if(!paymentVerification.status || paymentVerification.status === "failed"){
-        // return res.status(400).json({
-        //     status: "error",
-        //     message: "Transaction not confirmed",
-        // });
-
-        // For testing purposes, we will assume the payment is confirmed
-        paymentVerification = { status: "mined" };
-     }
-
-   
-
-    console.log("Payment verification response", paymentVerification);
-
-    if (paymentVerification.status === "failed") {
         return res.status(400).json({
             status: "error",
-            message: "Payment not confirmed",
+            message: "Transaction not confirmed",
+        });
+
+        // For testing purposes, we will assume the payment is confirmed
+        // paymentVerification = { status: "mined" ,reference:reference};
+     }
+
+
+    if(paymentVerification.reference!==reference){
+        return res.status(400).json({
+            status: "error",
+            message: "Invalid payment reference",
         });
     }
 
