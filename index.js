@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
-import { supabaseAdmin } from './supabase/supabaseAdminClient.js';
+import { getSupabaseAdmin } from './supabase/supabaseAdminClient.js';
 import dotenv from 'dotenv';
 import { stat } from 'fs';
 import { ref } from 'process';
@@ -55,7 +55,7 @@ app.post('/api/v1/signin', async (req, res) => {
         const { walletAddress, username, profilePictureUrl, nonce } = await req.body;
 
         const cookieNonce = req.cookies.siwe;
-        console.log("cookie nonce", cookieNonce, "body nonce", nonce);
+        // console.log("cookie nonce", cookieNonce, "body nonce", nonce);
         console.log("signin called with", walletAddress, username);
         // if (nonce != cookieNonce) {
         //     return res.status(400).json({
@@ -66,6 +66,9 @@ app.post('/api/v1/signin', async (req, res) => {
         // }
 
         // 1. Check if user exists
+
+        const supabaseAdmin = getSupabaseAdmin();
+
         const { data: existingUser, error: findError } = await supabaseAdmin
             .from('user_profiles')
             .select('*')
@@ -157,6 +160,8 @@ app.post('/api/v1/initiate-payment', async (req, res) => {
     const { productId, sellerId, paymentType,currency } = req.body;
 
     console.log("Initiate payment called with", productId, sellerId, paymentType);
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data: existingPayment, error: fetchError } = await supabaseAdmin
         .from('listing_payments')
@@ -271,6 +276,9 @@ app.post('/api/v1/verify-payment', async (req, res) => {
     const { reference,transaction_id } = req.body;
 
     console.log(`Verify payment called with ref ${reference} transactionId ${transaction_id}`);
+
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     const { data: paymentData, error: lookUpError } = await supabaseAdmin
         .from('listing_payments')
